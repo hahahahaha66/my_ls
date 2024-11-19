@@ -67,15 +67,9 @@ void list_directory_information(const char*path){
     }
     closedir(p);
 }
-void list_directory_recursion(const char*path,int count,char*lis){
-    if(count++==0){
-        strcpy(lis,path);
-    }
-    else{
-        strcat(lis,"/");
-        strcat(lis,path);
-    }
-    printf("%s:\n",lis);
+void list_directory_recursion(const char*path){
+    char ful_path[1024];
+    printf("%s:\n",path);
     list_directory(path);
     DIR *p;
     p=opendir(path);
@@ -85,9 +79,10 @@ void list_directory_recursion(const char*path,int count,char*lis){
     while((dir=readdir(p))!=NULL){
         if(dir->d_name[0]=='.')
         continue;
-        stat(dir->d_name,&sta);
+        snprintf(ful_path,sizeof(ful_path),"%s/%s",path,dir->d_name);
+        stat(ful_path,&sta);
         if(S_ISDIR(sta.st_mode)){
-            list_directory_recursion(dir->d_name,count,lis);
+            list_directory_recursion(ful_path);
             printf("\n");
         }
     }
@@ -125,8 +120,6 @@ int main(int argc,char*argv[]){
             list_directory_information(buf);
             break;
             case'R':
-            int count=0;
-            char*lis=(char*)malloc(1024);
             if(optind<argc&&argv[optind][0]!='-'){
                 strncpy(buf,argv[optind],PATH_MAX-1);
                 buf[PATH_MAX-1]='\0';
@@ -135,7 +128,7 @@ int main(int argc,char*argv[]){
             else{
                 getcwd(buf,sizeof(buf));
             }
-            list_directory_recursion(buf,count,lis);
+            list_directory_recursion(buf);
             break;
         }
     }
