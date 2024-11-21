@@ -1,12 +1,15 @@
 #include<pwd.h>
+#include <sys/types.h>
 #include<time.h>
 #include<stdio.h>
+#include"uthash.h"
 #include<stdlib.h>
 #include<getopt.h>
 #include<unistd.h>
 #include<dirent.h>
 #include<string.h>
 #include<sys/stat.h>
+#include<stdbool.h>
 #include<linux/limits.h>
 #include<bits/getopt_ext.h>
 
@@ -15,6 +18,42 @@ struct haha{
     char* name;
     time_t tim;
 };
+typedef struct {
+    char path[PATH_MAX]; // 记录路径
+    ino_t inode;         // 记录 inode
+    UT_hash_handle hh;   // 哈希表的句柄
+} VisitedPath;
+VisitedPath *visited_paths = NULL;
+
+// 检查路径是否已访问
+bool is_path_visited(const char *path) {
+    VisitedPath *s;
+    HASH_FIND_STR(visited_paths, path, s);
+    return s != NULL;
+}
+
+// 添加路径到集合
+void add_path(const char *path,ino_t inode) {
+    if (is_path_visited(path)) return;
+
+    VisitedPath *s = malloc(sizeof(VisitedPath));
+    if (!s) {
+        perror("Failed to allocate memory for hash entry");
+        exit(EXIT_FAILURE);
+    }
+    strncpy(s->path, path, PATH_MAX);
+    s->inode=inode;
+    HASH_ADD_STR(visited_paths, path, s);
+}
+
+// 清理路径集合
+void free_visited_paths() {
+    VisitedPath *current, *tmp;
+    HASH_ITER(hh, visited_paths, current, tmp) {
+        HASH_DEL(visited_paths, current);
+        free(current);
+    }
+}
 
 void printf_mode(mode_t st_mode ){
     char temp[10];
@@ -56,41 +95,60 @@ void list_directory(const char*path,int*option){
     struct dirent* dir;
     struct passwd* passwd1;
     struct passwd* passwd2;
-    struct haha* haha=(struct haha*)malloc(sizeof(struct haha));
+    struct haha* haha=NULL;
     int countfile=0;
-    int temp=0;
     char full_path[PATH_MAX];
     DIR *p1;
     p1=opendir(path);
+    if(!p1){
+        perror("opendir");
+        return ;
+    }
+    char real_path[PATH_MAX];
+    if(realpath(path,real_path)==NULL){
+        perror("realpath");
+        closedir(p1);
+        return ;
+    }
+    if(strcmp(path,"//dev/fd")==0){
+        closedir(p1);
+        return ;
+    }
+    if(strcmp(path,"//sys")==0){
+        closedir(p1);
+        return ;
+    }
+    if(strcmp(path,"//proc")==0){
+        closedir(p1);
+        return ;
+    }
     if(option[2]){
         printf("%s:\n",path);
     }
 
     while((dir=readdir(p1))!=NULL){
-        if(!option[0]){
-            if(dir->d_name[0]=='.')
+        if(!option[0]&&(dir->d_name[0]=='.')){
             continue;
         }
         snprintf(full_path, sizeof(full_path), "%s/%s", path, dir->d_name);
-        if (stat(full_path, &sta) == -1) {
+        if (lstat(full_path, &sta) == -1) {
             perror("stat failed");
             continue;
         }
-        haha[countfile].name=dir->d_name;
-        haha[countfile].tim=sta.st_mtime;
-        countfile++;
-        struct haha* new_haha = realloc(haha, (countfile + 1) * sizeof(struct haha));
+        struct haha *new_haha = realloc(haha, (countfile + 1) * sizeof(struct haha));
         if (!new_haha) {
             free(haha);
             perror("Memory allocation failed");
             exit(EXIT_FAILURE);
         }
         haha = new_haha;
+        haha[countfile].name=dir->d_name;
+        haha[countfile].tim=sta.st_mtime;
+        countfile++;
     }
     
     if(option[3]){
-        int (*com)(const void* a,const void* b)=&compare;
-        qsort(haha,countfile,sizeof(struct haha),com);
+        qsort(haha,countfile,sizeof(struct haha),compare);
     }
 
     if(option[4]){
@@ -99,12 +157,12 @@ void list_directory(const char*path,int*option){
 
     for(int i=0;i<countfile;i++){
         if(haha[i].name){
+            snprintf(full_path, sizeof(full_path), "%s/%s", path, haha[i].name);
+            if (lstat(full_path, &sta) == -1) {
+                perror("stat failed");
+                continue;
+            }
             if(option[1]){
-                snprintf(full_path, sizeof(full_path), "%s/%s", path, haha[i].name);
-                if (stat(full_path, &sta) == -1) {
-                    perror("stat failed");
-                    continue;
-                }
                 passwd1=getpwuid(sta.st_uid);
                 passwd2=getpwuid(sta.st_gid);
                 printf_mode(sta.st_mode);
@@ -114,53 +172,43 @@ void list_directory(const char*path,int*option){
                 printf("%-ld ",sta.st_size);
                 //printf("%s",ctime(&(sta.st_mtime)));
                 printf_time(sta.st_mtime);
-                if(option[6]){
-                    printf("%ld ",(sta.st_size)/512);
-                }
-                if(option[5]){
-                    printf("%ld ",sta.st_ino);
-                }
-                printf("%s\n",haha[i].name);
-        }
-            else{
-                snprintf(full_path, sizeof(full_path), "%s/%s", path, haha[i].name);
-                if (stat(full_path, &sta) == -1) {
-                    perror("stat failed");
-                    continue;
-                }
-                if(option[6]){
+            }
+            if(option[6]){
                 printf("%ld ",(sta.st_size)/512);
-                }
-                if(option[5]){
+            }
+            if(option[5]){
                 printf("%ld ",sta.st_ino);
-                }
-                printf("%s\n",haha[i].name);
-            } 
+            }
+            printf("%s\n",haha[i].name);
         }
     }
     free(haha);
         
     if(option[2]){
-        char ful_path[PATH_MAX];
-        DIR *p2;
-        p2=opendir(path);
-        if(p2==NULL){
+        DIR *p2=opendir(path);
+        if(!p2){
             perror("opendir");
             return ;
         }
-        struct dirent* dir;
-        struct stat sta;
         printf("\n");
         while((dir=readdir(p2))!=NULL){
             if(!option[0]){
                 if(dir->d_name[0]=='.')
                 continue;
             }
-        snprintf(ful_path,sizeof(ful_path),"%s/%s",path,dir->d_name);
-        stat(ful_path,&sta);
-        if(S_ISDIR(sta.st_mode)&& strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0){
-            list_directory(ful_path,option);
-            //printf("\n");
+            snprintf(full_path,sizeof(full_path),"%s/%s",path,dir->d_name);
+            if(stat(full_path,&sta)==-1){
+                continue;
+            }
+            if(S_ISDIR(sta.st_mode)&&(strcmp(dir->d_name, ".") != 0)&&(strcmp(dir->d_name, "..") != 0)){
+                if(strcmp(full_path,"//dev/fd")==0){
+                    continue;
+                }
+                if(!is_path_visited(full_path)){
+                    add_path(full_path,sta.st_ino);
+                    printf("\n");
+                    list_directory(full_path,option);
+                }
             }
         }
     closedir(p2);
@@ -203,14 +251,20 @@ int main(int argc,char*argv[]){
             break;
         }
     }
-    if(optind<argc){
-        strncpy(buf,argv[optind],PATH_MAX-1);
+   if(optind<argc){
+    for(int i=optind;i<argc;i++){
+        strncpy(buf,argv[i],PATH_MAX-1);
         buf[PATH_MAX-1]='\0';
-        temp=1;
+        list_directory(buf, option);
+        if(i<argc-1){
+            printf("\n");
+        }
     }
-    if(!temp){
-        getcwd(buf,sizeof(buf));
-    }
+   }
+   else{
+    getcwd(buf,sizeof(buf));
     list_directory(buf, option);
+   }
+    free_visited_paths();
     return 0;
 }

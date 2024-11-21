@@ -134,3 +134,21 @@ int main(int argc,char*argv[]){
     }
     return 0;
 }
+// if (S_ISLNK(sta.st_mode)) {
+//             continue;
+//         }
+        // if(S_ISLNK(sta.st_mode)){
+        //     if(option[1]){
+        //         printf("符号链接：%s->",dir->d_name);
+        //         char link_target[PATH_MAX];
+        //         ssize_t len=readlink(full_path,link_target,sizeof(link_target));
+        //         if(len!=-1){
+        //             link_target[len]='\0';
+        //             printf("%s\n",link_target);
+        //         }
+        //         else{
+        //             perror("readlink failed");
+        //         }
+        //     }
+        //     continue;
+        // }
