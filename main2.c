@@ -157,6 +157,7 @@ void list_directory(const char*path,int*option){
 
     for(int i=0;i<countfile;i++){
         if(haha[i].name){
+            char a='\t';
             snprintf(full_path, sizeof(full_path), "%s/%s", path, haha[i].name);
             if (lstat(full_path, &sta) == -1) {
                 perror("stat failed");
@@ -172,6 +173,7 @@ void list_directory(const char*path,int*option){
                 printf("%-ld ",sta.st_size);
                 //printf("%s",ctime(&(sta.st_mtime)));
                 printf_time(sta.st_mtime);
+                a='\n';
             }
             if(option[6]){
                 printf("%ld ",(sta.st_size)/512);
@@ -181,15 +183,16 @@ void list_directory(const char*path,int*option){
             }
             if(sta.st_mode&S_IXUSR){
                 if((haha[i].name)[0]=='.'){
-                    printf("\033[1;34m%s\033[0m\n",haha[i].name); 
+                    printf("\033[1;34m%s\033[0m%c",haha[i].name,a); 
                 }
                 else{
-                    printf("\033[1;32m%s\033[0m\n",haha[i].name);
+                    printf("\033[1;32m%s\033[0m%c",haha[i].name,a);
                 }
             }
             else{
-                printf("%s\n",haha[i].name);
+                printf("%s%c",haha[i].name,a);
             }
+            printf("\n");
         }
     }
     free(haha);
@@ -211,9 +214,9 @@ void list_directory(const char*path,int*option){
                 continue;
             }
             if(S_ISDIR(sta.st_mode)&&(strcmp(dir->d_name, ".") != 0)&&(strcmp(dir->d_name, "..") != 0)){
-                if(strcmp(full_path,"//dev/fd")==0){
-                    continue;
-                }
+                // if(strcmp(full_path,"//dev/fd")==0){
+                //     continue;
+                // }
                 if(!is_path_visited(full_path)){
                     add_path(full_path,sta.st_ino);
                     printf("\n");
