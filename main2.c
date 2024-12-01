@@ -179,7 +179,17 @@ void list_directory(const char*path,int*option){
             if(option[5]){
                 printf("%ld ",sta.st_ino);
             }
-            printf("%s\n",haha[i].name);
+            if(sta.st_mode&S_IXUSR){
+                if((haha[i].name)[0]=='.'){
+                    printf("\033[1;34m%s\033[0m\n",haha[i].name); 
+                }
+                else{
+                    printf("\033[1;32m%s\033[0m\n",haha[i].name);
+                }
+            }
+            else{
+                printf("%s\n",haha[i].name);
+            }
         }
     }
     free(haha);
