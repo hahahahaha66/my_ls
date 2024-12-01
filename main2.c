@@ -192,8 +192,10 @@ void list_directory(const char*path,int*option){
             else{
                 printf("%s%c",haha[i].name,a);
             }
-            printf("\n");
         }
+    }
+    if(!option[1]){
+        printf("\n");
     }
     free(haha);
         
