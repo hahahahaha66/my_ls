@@ -16,6 +16,7 @@
 #include<stdbool.h>
 #include<linux/limits.h>
 #include<bits/getopt_ext.h>
+#define MAX_DEPTH 100
 
 #define _GNU_SOURCE
 struct haha{
@@ -124,11 +125,11 @@ int get_now(){
     configure_terminal(1);
     char* cleaned_buf = buf;
     while(*cleaned_buf == ' ' || *cleaned_buf == '\n' || *cleaned_buf == '\r') {
-        cleaned_buf++;  // 跳过前导空白字符
+        cleaned_buf++;  
     }
     int len = strlen(cleaned_buf);
     while(len > 0 && (cleaned_buf[len - 1] == ' ' || cleaned_buf[len - 1] == '\n' || cleaned_buf[len - 1] == '\r')) {
-        cleaned_buf[--len] = '\0';  // 去除尾随空白字符
+        cleaned_buf[--len] = '\0';  
     }
     int row,col;
     if(sscanf(buf+2,"%d;%d",&row,&col)==2){
@@ -147,6 +148,7 @@ void list_directory(const char*path,int*option){
     struct winsize w;
     struct haha* haha=NULL;
     int countfile=0;
+    static int depth=0;
     char full_path[PATH_MAX];
     DIR *p1;
     p1=opendir(path);
@@ -168,14 +170,14 @@ void list_directory(const char*path,int*option){
         closedir(p1);
         return ;
     }
-    if(strcmp(path,"//sys")==0){
-        closedir(p1);
-        return ;
-    }
-    if(strcmp(path,"//proc")==0){
-        closedir(p1);
-        return ;
-    }
+    // if(strcmp(path,"//sys")==0){
+    //     closedir(p1);
+    //     return ;
+    // }
+    // if(strcmp(path,"//proc")==0){
+    //     closedir(p1);
+    //     return ;
+    // }
     if(option[2]){
         printf("%s:\n",path);
     }
@@ -279,7 +281,14 @@ void list_directory(const char*path,int*option){
                 if(!is_path_visited(full_path)){
                     add_path(full_path,sta.st_ino);
                     printf("\n");
-                    list_directory(full_path,option);
+                    if(depth<MAX_DEPTH){
+                        depth++;
+                        list_directory(full_path,option);
+                    }
+                    else{
+                        return ;
+                    }
+                    
                 }
             }
         }
