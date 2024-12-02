@@ -1,5 +1,7 @@
+#include <asm-generic/ioctls.h>
 #include<pwd.h>
-#include <sys/types.h>
+#include<fcntl.h>
+#include<termios.h>
 #include<time.h>
 #include<stdio.h>
 #include"uthash.h"
@@ -9,6 +11,8 @@
 #include<dirent.h>
 #include<string.h>
 #include<sys/stat.h>
+#include<sys/types.h>
+#include<sys/ioctl.h>
 #include<stdbool.h>
 #include<linux/limits.h>
 #include<bits/getopt_ext.h>
@@ -90,11 +94,57 @@ void invert(struct haha*haha,int len){
     }
 } 
 
+void configure_terminal(int enable){
+    struct termios t;
+    tcgetattr(STDIN_FILENO,&t);
+    if(!enable){
+        t.c_lflag &=~(ECHO |ICANON);
+    }
+    else{
+        t.c_lflag |=(ECHO |ICANON);
+    }
+    tcsetattr(STDIN_FILENO,TCSANOW,&t);
+}
+
+int get_now(){
+    configure_terminal(0);
+    printf("\033[6n");
+    fflush(stdout);
+    char buf[32];
+    int i=0;
+    while(1){
+        if(read(STDIN_FILENO,&buf[i],1)==-1){
+            perror("read");
+            configure_terminal(1);
+            return 1;
+        }
+        if(buf[i]=='R') break;
+        i++;
+    }
+    configure_terminal(1);
+    char* cleaned_buf = buf;
+    while(*cleaned_buf == ' ' || *cleaned_buf == '\n' || *cleaned_buf == '\r') {
+        cleaned_buf++;  // 跳过前导空白字符
+    }
+    int len = strlen(cleaned_buf);
+    while(len > 0 && (cleaned_buf[len - 1] == ' ' || cleaned_buf[len - 1] == '\n' || cleaned_buf[len - 1] == '\r')) {
+        cleaned_buf[--len] = '\0';  // 去除尾随空白字符
+    }
+    int row,col;
+    if(sscanf(buf+2,"%d;%d",&row,&col)==2){
+        return col;
+    }
+    else{
+        return -1;
+    }
+}
+
 void list_directory(const char*path,int*option){
     struct stat sta;
     struct dirent* dir;
     struct passwd* passwd1;
     struct passwd* passwd2;
+    struct winsize w;
     struct haha* haha=NULL;
     int countfile=0;
     char full_path[PATH_MAX];
@@ -102,6 +152,10 @@ void list_directory(const char*path,int*option){
     p1=opendir(path);
     if(!p1){
         perror("opendir");
+        return ;
+    }
+    if(ioctl(STDOUT_FILENO,TIOCGWINSZ,&w)==-1){
+        perror("ioctl failed");
         return ;
     }
     char real_path[PATH_MAX];
@@ -181,16 +235,19 @@ void list_directory(const char*path,int*option){
             if(option[5]){
                 printf("%ld ",sta.st_ino);
             }
+            if(w.ws_col-get_now()-strlen(haha[i].name)<25){
+                printf("\n");
+            }
             if(sta.st_mode&S_IXUSR){
                 if((haha[i].name)[0]=='.'){
-                    printf("\033[1;34m%s\033[0m%c",haha[i].name,a); 
+                    printf("\033[1;34m%-20s\033[0m%c",haha[i].name,a); 
                 }
                 else{
-                    printf("\033[1;32m%s\033[0m%c",haha[i].name,a);
+                    printf("\033[1;32m%-20s\033[0m%c",haha[i].name,a);
                 }
             }
             else{
-                printf("%s%c",haha[i].name,a);
+                printf("%-20s%c",haha[i].name,a);
             }
         }
     }
