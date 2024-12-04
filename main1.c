@@ -134,21 +134,44 @@ int main(int argc,char*argv[]){
     }
     return 0;
 }
-// if (S_ISLNK(sta.st_mode)) {
-//             continue;
-//         }
-        // if(S_ISLNK(sta.st_mode)){
-        //     if(option[1]){
-        //         printf("符号链接：%s->",dir->d_name);
-        //         char link_target[PATH_MAX];
-        //         ssize_t len=readlink(full_path,link_target,sizeof(link_target));
-        //         if(len!=-1){
-        //             link_target[len]='\0';
-        //             printf("%s\n",link_target);
-        //         }
-        //         else{
-        //             perror("readlink failed");
-        //         }
-        //     }
-        //     continue;
-        // }
+// typedef struct {
+//     char path[PATH_MAX]; // 记录路径
+//     ino_t inode;         // 记录 inode
+//     UT_hash_handle hh;   // 哈希表的句柄
+// } VisitedPath;
+// VisitedPath *visited_paths = NULL;
+
+// // 检查路径是否已访问
+// bool is_path_visited(const char *path) {
+//     VisitedPath *s;
+//     HASH_FIND_STR(visited_paths, path, s);
+//     return s != NULL;
+// }
+
+// // 添加路径到集合
+// void add_path(const char *path,ino_t inode) {
+//     if (is_path_visited(path)) return;
+
+//     VisitedPath *s = malloc(sizeof(VisitedPath));
+//     if (!s) {
+//         perror("Failed to allocate memory for hash entry");
+//         exit(EXIT_FAILURE);
+//     }
+//     strncpy(s->path, path, PATH_MAX);
+//     s->inode=inode;
+//     HASH_ADD_STR(visited_paths, path, s);
+// }
+
+// // 清理路径集合
+// void free_visited_paths() {
+//     VisitedPath *current, *tmp;
+//     HASH_ITER(hh, visited_paths, current, tmp) {
+//         HASH_DEL(visited_paths, current);
+//         free(current);
+//     }
+// }
+// if(strcmp(full_path,"//dev/fd")==0){
+                //     continue;
+                // }
+                // if(!is_path_visited(full_path)){
+                //     add_path(full_path,sta.st_ino);

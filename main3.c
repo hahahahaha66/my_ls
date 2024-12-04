@@ -4,9 +4,9 @@
 #include<termios.h>
 #include<time.h>
 #include<stdio.h>
-#include<math.h>
 #include"uthash.h"
 #include<stdlib.h>
+#include<errno.h>
 #include<getopt.h>
 #include<unistd.h>
 #include<dirent.h>
@@ -14,64 +14,52 @@
 #include<sys/stat.h>
 #include<sys/types.h>
 #include<sys/ioctl.h>
-#include<errno.h>
 #include<stdbool.h>
 #include<linux/limits.h>
 #include<bits/getopt_ext.h>
-#define MAX_DEPTH 25
+#define MAX_DEPTH 42
 
 #define _GNU_SOURCE
 struct haha{
     char* name;
     time_t tim;
 };
+// typedef struct {
+//     char path[PATH_MAX]; // 记录路径
+//     ino_t inode;         // 记录 inode
+//     UT_hash_handle hh;   // 哈希表的句柄
+// } VisitedPath;
+// VisitedPath *visited_paths = NULL;
 
-typedef struct {
-    char path[PATH_MAX]; // 记录路径
-    ino_t inode;         // 记录 inode
-    UT_hash_handle hh;   // 哈希表的句柄
-} VisitedPath;
-VisitedPath *visited_paths = NULL;
+// // 检查路径是否已访问
+// bool is_path_visited(const char *path) {
+//     VisitedPath *s;
+//     HASH_FIND_STR(visited_paths, path, s);
+//     return s != NULL;
+// }
 
-// 检查路径是否已访问
-bool is_path_visited(const char *path) {
-    VisitedPath *s;
-    HASH_FIND_STR(visited_paths, path, s);
-    return s != NULL;
-}
+// // 添加路径到集合
+// void add_path(const char *path,ino_t inode) {
+//     if (is_path_visited(path)) return;
 
-//统一路径格式
-void normalize_path(char *path) {
-    size_t len = strlen(path);
-    if (len > 1 && path[len - 1] == '/') {
-        path[len - 1] = '\0'; // 移除末尾的斜杠
-    }
-}
+//     VisitedPath *s = malloc(sizeof(VisitedPath));
+//     if (!s) {
+//         perror("Failed to allocate memory for hash entry");
+//         exit(EXIT_FAILURE);
+//     }
+//     strncpy(s->path, path, PATH_MAX);
+//     s->inode=inode;
+//     HASH_ADD_STR(visited_paths, path, s);
+// }
 
-// 添加路径到集合
-void add_path(const char *path,ino_t inode) {
-    char normalized_path[PATH_MAX];
-    strncpy(normalized_path, path, PATH_MAX);
-    normalize_path(normalized_path);
-    if (is_path_visited(path)) return;
-    VisitedPath *s = malloc(sizeof(VisitedPath));
-    if (!s) {
-        perror("Failed to allocate memory for hash entry");
-        exit(EXIT_FAILURE);
-    }
-    strncpy(s->path, path, PATH_MAX);
-    s->inode=inode;
-    HASH_ADD_STR(visited_paths, path, s);
-}
-
-// 清理路径集合
-void free_visited_paths() {
-    VisitedPath *current, *tmp;
-    HASH_ITER(hh, visited_paths, current, tmp) {
-        HASH_DEL(visited_paths, current);
-        free(current);
-    }
-}
+// // 清理路径集合
+// void free_visited_paths() {
+//     VisitedPath *current, *tmp;
+//     HASH_ITER(hh, visited_paths, current, tmp) {
+//         HASH_DEL(visited_paths, current);
+//         free(current);
+//     }
+// }
 
 void printf_mode(mode_t st_mode ){
     char temp[10];
@@ -108,55 +96,50 @@ void invert(struct haha*haha,int len){
     }
 } 
 
-int get_digit_count(int num){
-    if(num==0)return 1;
-    return (int)(log10(num)+1);
-}
+// void configure_terminal(int enable){
+//     struct termios t;
+//     tcgetattr(STDIN_FILENO,&t);
+//     if(!enable){
+//         t.c_lflag &=~(ECHO |ICANON);
+//     }
+//     else{
+//         t.c_lflag |=(ECHO |ICANON);
+//     }
+//     tcsetattr(STDIN_FILENO,TCSANOW,&t);
+// }
 
-void configure_terminal(int enable){
-    struct termios t;
-    tcgetattr(STDIN_FILENO,&t);
-    if(!enable){
-        t.c_lflag &=~(ECHO |ICANON);
-    }
-    else{
-        t.c_lflag |=(ECHO |ICANON);
-    }
-    tcsetattr(STDIN_FILENO,TCSANOW,&t);
-}
-
-int get_now(){
-    configure_terminal(0);
-    printf("\033[6n");
-    fflush(stdout);
-    char buf[32];
-    int i=0;
-    while(1){
-        if(read(STDIN_FILENO,&buf[i],1)==-1){
-            perror("read failed");
-            configure_terminal(1);
-            return -1;
-        }
-        if(buf[i]=='R') break;
-        i++;
-    }
-    configure_terminal(1);
-    char* cleaned_buf = buf;
-    while(*cleaned_buf == ' ' || *cleaned_buf == '\n' || *cleaned_buf == '\r') {
-        cleaned_buf++;  
-    }
-    int len = strlen(cleaned_buf);
-    while(len > 0 && (cleaned_buf[len - 1] == ' ' || cleaned_buf[len - 1] == '\n' || cleaned_buf[len - 1] == '\r')) {
-        cleaned_buf[--len] = '\0';  
-    }
-    int row,col;
-    if(sscanf(buf+2,"%d;%d",&row,&col)==2){
-        return col;
-    }
-    else{
-        return -1;
-    }
-}
+// int get_now(){
+//     configure_terminal(0);
+//     printf("\033[6n");
+//     fflush(stdout);
+//     char buf[32];
+//     int i=0;
+//     while(1){
+//         if(read(STDIN_FILENO,&buf[i],1)==-1){
+//             perror("read");
+//             configure_terminal(1);
+//             return 1;
+//         }
+//         if(buf[i]=='R') break;
+//         i++;
+//     }
+//     configure_terminal(1);
+//     char* cleaned_buf = buf;
+//     while(*cleaned_buf == ' ' || *cleaned_buf == '\n' || *cleaned_buf == '\r') {
+//         cleaned_buf++;  
+//     }
+//     int len = strlen(cleaned_buf);
+//     while(len > 0 && (cleaned_buf[len - 1] == ' ' || cleaned_buf[len - 1] == '\n' || cleaned_buf[len - 1] == '\r')) {
+//         cleaned_buf[--len] = '\0';  
+//     }
+//     int row,col;
+//     if(sscanf(buf+2,"%d;%d",&row,&col)==2){
+//         return col;
+//     }
+//     else{
+//         return -1;
+//     }
+// }
 
 void list_directory(const char*path,int*option,int depth){
     struct stat sta;
@@ -168,9 +151,6 @@ void list_directory(const char*path,int*option,int depth){
     int countfile=0;
     //static int depth=0;
     char full_path[PATH_MAX];
-    if(depth>MAX_DEPTH){
-        return ;
-    }
     DIR *p1;
     p1=opendir(path);
     if(!p1){
@@ -183,14 +163,10 @@ void list_directory(const char*path,int*option,int depth){
     }
     char real_path[PATH_MAX];
     if(realpath(path,real_path)==NULL){
-        perror("realpath failed");
+        perror("realpath");
         closedir(p1);
         return ;
     }
-    // if(strcmp(path,"//dev/fd")==0){
-    //     closedir(p1);
-    //     return ;
-    // }
     if(option[2]){
         printf("%s:\n",path);
     }
@@ -200,16 +176,11 @@ void list_directory(const char*path,int*option,int depth){
             continue;
         }
         snprintf(full_path, sizeof(full_path), "%s/%s", path, dir->d_name);
-        normalize_path(full_path);
         if (lstat(full_path, &sta) == -1) {
             perror("stat failed");
             continue;
         }
-        if (is_path_visited(full_path)) {
-            continue;
-        }
-        add_path(full_path, sta.st_ino);
-        struct haha *new_haha = realloc(haha, (countfile +1) * sizeof(struct haha));
+        struct haha *new_haha = realloc(haha, (countfile + 1) * sizeof(struct haha));
         if (!new_haha) {
             free(haha);
             perror("Memory allocation failed");
@@ -240,55 +211,27 @@ void list_directory(const char*path,int*option,int depth){
                 perror("stat failed");
                 continue;
             }
-            if (S_ISLNK(sta.st_mode)) {
-                continue;
-            }
-            // if (strstr(full_path, "/sys") || strstr(full_path, "/proc") || strstr(full_path, "/dev")) {
-            //     continue;
-            // }
             if(option[1]){
                 passwd1=getpwuid(sta.st_uid);
                 passwd2=getpwuid(sta.st_gid);
                 printf_mode(sta.st_mode);
                 printf("%ld ",sta.st_nlink);
-                if(!passwd1){
-                    printf("Unknow user\n");
-                }
-                else{
-                    printf("%s ",passwd1->pw_name);
-                }
-                if(!passwd2){
-                    printf("Unknow group\n");
-                }
-                else{
-                    printf("%s ",passwd2->pw_name);
-                }
+                printf("%s ",passwd1->pw_name);
+                printf("%s ",passwd2->pw_name);
                 printf("%-ld ",sta.st_size);
                 //printf("%s",ctime(&(sta.st_mtime)));
                 printf_time(sta.st_mtime);
                 a='\n';
             }
-            if(!option[1]){
-                if(option[6]&&!option[5]&&w.ws_col-get_now()-strlen(haha[i].name)-get_digit_count((sta.st_size)/512)<50){
-                printf("\n");
-                }
-                else if(option[5]&&!option[6]&&w.ws_col-get_now()-strlen(haha[i].name)-get_digit_count(sta.st_ino)<50){
-                printf("\n");
-                }
-                else if(option[5]&&option[6]&&w.ws_col-get_now()-strlen(haha[i].name)-get_digit_count(sta.st_ino)-get_digit_count((sta.st_size)/512)<50){
-                printf("\n");
-                }
-                else if(!option[5]&&!option[6]&&w.ws_col-get_now()-strlen(haha[i].name)<50){
-                printf("\n");
-                }
-            }
-            
             if(option[6]){
                 printf("%ld ",(sta.st_size)/512);
             }
             if(option[5]){
                 printf("%ld ",sta.st_ino);
             }
+            // if(w.ws_col-get_now()-strlen(haha[i].name)<25){
+            //     printf("\n");
+            // }
             if(sta.st_mode&S_IXUSR){
                 if((haha[i].name)[0]=='.'){
                     printf("\033[1;34m%-20s\033[0m%c",haha[i].name,a); 
@@ -320,23 +263,28 @@ void list_directory(const char*path,int*option,int depth){
                 continue;
             }
             snprintf(full_path,sizeof(full_path),"%s/%s",path,dir->d_name);
-            normalize_path(full_path);
             if(stat(full_path,&sta)==-1){
                 continue;
             }
-            if(!is_path_visited(full_path)){
-                continue;
-            }
-            add_path(full_path,sta.st_ino);
             if(S_ISDIR(sta.st_mode)&&(strcmp(dir->d_name, ".") != 0)&&(strcmp(dir->d_name, "..") != 0)){
                 printf("\n");
-                list_directory(full_path,option,depth+1);
-                // if (strcmp(real_path, "/sys") == 0 || strcmp(real_path, "/dev") == 0 || strcmp(real_path, "/proc") == 0) {
-                //     closedir(p1);
-                //     return;
-                // }
-                // list_directory(full_path,option,depth+1);
-                //     return ;
+                if(depth<MAX_DEPTH){
+                    depth++;
+                    list_directory(full_path,option,depth+1);
+                }
+                else{
+                    return ;
+                }
+                // if(!is_path_visited(full_path)){
+                //     add_path(full_path,sta.st_ino);
+                //     printf("\n");
+                //     if(depth<MAX_DEPTH){
+                //         depth++;
+                //         list_directory(full_path,option,depth+1);
+                //     }
+                //     else{
+                //         return ;
+                //     }
                 // }
             }
         }
@@ -382,7 +330,7 @@ int main(int argc,char*argv[]){
     }
    if(optind<argc){
     for(int i=optind;i<argc;i++){
-        snprintf(buf, PATH_MAX, "%s", argv[i]);
+        strncpy(buf,argv[i],PATH_MAX-1);
         buf[PATH_MAX-1]='\0';
         list_directory(buf, option,0);
         if(i<argc-1){
@@ -394,6 +342,6 @@ int main(int argc,char*argv[]){
     getcwd(buf,sizeof(buf));
     list_directory(buf, option,0);
    }
-    free_visited_paths();
+    //free_visited_paths();
     return 0;
 }
