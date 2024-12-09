@@ -16,7 +16,7 @@
 #include<stdbool.h>
 #include<linux/limits.h>
 #include<bits/getopt_ext.h>
-#define MAX_DEPTH 42
+//#define MAX_DEPTH 42
 
 #define _GNU_SOURCE
 struct haha{
@@ -41,10 +41,16 @@ void printf_time(time_t time){
     printf("%s ",tim);
 }
 
-int compare(const void*a,const void*b){
+int compare1(const void*a,const void*b){
     time_t m=((struct haha*)a)->tim;
     time_t n=((struct haha*)b)->tim;
     return (n>m)-(n<m);
+}
+
+int compare2(const void *a, const void *b) {
+    char*entryA=((struct haha*)a)->name;
+    char*entryB=((struct haha*)b)->name;
+    return strcmp(entryA, entryB);
 }
 
 void invert(struct haha*haha,int len){
@@ -75,10 +81,10 @@ void list_directory(const char*path,int*option,int depth){
         perror("opendir");
         return ;
     }
-    if(ioctl(STDOUT_FILENO,TIOCGWINSZ,&w)==-1){
-        perror("ioctl failed");
-        return ;
-    }
+    // if(ioctl(STDOUT_FILENO,TIOCGWINSZ,&w)==-1){
+    //     perror("ioctl failed");
+    //     return ;
+    // }
     char real_path[PATH_MAX];
     if(realpath(path,real_path)==NULL){
         perror("realpath");
@@ -94,8 +100,8 @@ void list_directory(const char*path,int*option,int depth){
             continue;
         }
         snprintf(full_path, sizeof(full_path), "%s/%s", path, dir->d_name);
-        if (lstat(full_path, &sta) == -1) {
-            perror("stat failed");
+        if (stat(full_path, &sta) == -1) {
+            perror("lstat failed");
             continue;
         }
         struct haha *new_haha = realloc(haha, (countfile + 1) * sizeof(struct haha));
@@ -110,8 +116,10 @@ void list_directory(const char*path,int*option,int depth){
         countfile++;
     }
     
+    qsort(haha,countfile,sizeof(struct haha),compare2);
+
     if(option[3]){
-        qsort(haha,countfile,sizeof(struct haha),compare);
+        qsort(haha,countfile,sizeof(struct haha),compare1);
     }
 
     if(option[4]){
@@ -122,11 +130,11 @@ void list_directory(const char*path,int*option,int depth){
         if(haha[i].name){
             char a='\t';
             snprintf(full_path, sizeof(full_path), "%s/%s", path, haha[i].name);
-            if (lstat(full_path, &sta) == -1) {
+            if (stat(full_path, &sta) == -1) {
                  if (errno == ENOENT) {
                     continue;
             }
-                perror("stat failed");
+                perror("lstat failed");
                 continue;
             }
             if(option[1]){
@@ -180,18 +188,19 @@ void list_directory(const char*path,int*option,int depth){
                 continue;
             }
             snprintf(full_path,sizeof(full_path),"%s/%s",path,dir->d_name);
-            if(stat(full_path,&sta)==-1){
+            if(lstat(full_path,&sta)==-1){
                 continue;
             }
             if(S_ISDIR(sta.st_mode)&&(strcmp(dir->d_name, ".") != 0)&&(strcmp(dir->d_name, "..") != 0)){
                 printf("\n");
-                if(depth<MAX_DEPTH){
-                    depth++;
-                    list_directory(full_path,option,depth+1);
-                }
-                else{
-                    return ;
-                }
+                // if(depth<MAX_DEPTH){
+                //     depth++;
+                //     list_directory(full_path,option,depth+1);
+                // }
+                // else{
+                //     return ;
+                // }
+                list_directory(full_path,option,depth+1);
             }
         }
     closedir(p2);

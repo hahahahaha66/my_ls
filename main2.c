@@ -165,6 +165,7 @@ void list_directory(const char*path,int*option,int depth){
     struct passwd* passwd2;
     struct winsize w;
     struct haha* haha=NULL;
+    int len=get_now();
     int countfile=0;
     //static int depth=0;
     char full_path[PATH_MAX];
@@ -269,16 +270,16 @@ void list_directory(const char*path,int*option,int depth){
                 a='\n';
             }
             if(!option[1]){
-                if(option[6]&&!option[5]&&w.ws_col-get_now()-strlen(haha[i].name)-get_digit_count((sta.st_size)/512)<50){
+                if(option[6]&&!option[5]&&w.ws_col-len-strlen(haha[i].name)-get_digit_count((sta.st_size)/512)<50){
                 printf("\n");
                 }
-                else if(option[5]&&!option[6]&&w.ws_col-get_now()-strlen(haha[i].name)-get_digit_count(sta.st_ino)<50){
+                else if(option[5]&&!option[6]&&w.ws_col-len-strlen(haha[i].name)-get_digit_count(sta.st_ino)<50){
                 printf("\n");
                 }
-                else if(option[5]&&option[6]&&w.ws_col-get_now()-strlen(haha[i].name)-get_digit_count(sta.st_ino)-get_digit_count((sta.st_size)/512)<50){
+                else if(option[5]&&option[6]&&w.ws_col-len-strlen(haha[i].name)-get_digit_count(sta.st_ino)-get_digit_count((sta.st_size)/512)<50){
                 printf("\n");
                 }
-                else if(!option[5]&&!option[6]&&w.ws_col-get_now()-strlen(haha[i].name)<50){
+                else if(!option[5]&&!option[6]&&w.ws_col-len-strlen(haha[i].name)<50){
                 printf("\n");
                 }
             }
