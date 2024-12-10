@@ -96,7 +96,7 @@ void list_directory(const char*path,int*option,int depth){
     }
 
     while((dir=readdir(p1))!=NULL){
-        if(!option[0]&&(dir->d_name[0]=='.')){
+         if(!option[0]&&(dir->d_name[0]=='.')){
             continue;
         }
         snprintf(full_path, sizeof(full_path), "%s/%s", path, dir->d_name);
@@ -111,7 +111,7 @@ void list_directory(const char*path,int*option,int depth){
             exit(EXIT_FAILURE);
         }
         haha = new_haha;
-        haha[countfile].name=dir->d_name;
+        haha[countfile].name=strdup(dir->d_name);
         haha[countfile].tim=sta.st_mtime;
         countfile++;
     }
@@ -173,25 +173,18 @@ void list_directory(const char*path,int*option,int depth){
     if(!option[1]){
         printf("\n");
     }
-    free(haha);
         
     if(option[2]){
-        DIR *p2=opendir(path);
-        if(!p2){
-            perror("opendir");
-            return ;
-        }
         printf("\n");
-        while((dir=readdir(p2))!=NULL){
-            if(!option[0]){
-                if(dir->d_name[0]=='.')
+        for(int i=0;i<countfile;i++){
+            if(!option[0]&&(haha[i].name[0]=='.')){
                 continue;
             }
-            snprintf(full_path,sizeof(full_path),"%s/%s",path,dir->d_name);
+            snprintf(full_path,sizeof(full_path),"%s/%s",path,haha[i].name);
             if(lstat(full_path,&sta)==-1){
                 continue;
             }
-            if(S_ISDIR(sta.st_mode)&&(strcmp(dir->d_name, ".") != 0)&&(strcmp(dir->d_name, "..") != 0)){
+            if(S_ISDIR(sta.st_mode)&&(strcmp(haha[i].name, ".") != 0)&&(strcmp(haha[i].name, "..") != 0)){
                 printf("\n");
                 // if(depth<MAX_DEPTH){
                 //     depth++;
@@ -203,8 +196,11 @@ void list_directory(const char*path,int*option,int depth){
                 list_directory(full_path,option,depth+1);
             }
         }
-    closedir(p2);
     }
+    for (int i = 0; i < countfile; i++) {
+        free(haha[i].name);
+    }
+    free(haha);
     closedir(p1);
     
 }
